@@ -3,8 +3,10 @@ import { Input, Popover, Radio, Modal, message } from "antd";
 import { ArrowDownOutlined, DownOutlined, SettingOutlined } from "@ant-design/icons";
 import tokenList from "../tokenList.json";
 import axios from "axios";
+import { useSendTransaction, useWaitForTransaction } from "wagmi";
 
-function Swap() {
+function Swap(props) {
+  const { address, isConnected } = props;
   const [slippage, setSlippage] = useState(2.5);
   const [tokenOneAmount, setTokenOneAmount] = useState(null)
   const [tokenTwoAmount, setTokenTwoAmount] = useState(null)
@@ -13,7 +15,20 @@ function Swap() {
   const [isOpen, setIsOpen] = useState(false)
   const [changeToken, setChangeToken] = useState(1)
   const [usdPrices, setUsdPrices] = useState(null)
+  const [txDetails, setTxDetails] = useState({
+    to: null,
+    data: null,
+    value: null,
+  })
 
+  const { data, sendTransaction } = useSendTransaction({
+    request: {
+      from: address,
+      to: String(txDetails.to),
+      data: String(txDetails.data),
+      value: String(txDetails.value),
+    }
+  })
 
   const handleSlipPageChange = (e) => {
     setSlippage(e.target.value);
@@ -86,6 +101,18 @@ function Swap() {
   </>
   )
 
+  async function fetchDexSwap() {
+    const allowance = await axios.get(`https://api.1inch.io/v6.0/1/approve/allowance?tokenAddress=${tokenOne.address}&walletAddress=${address}`)
+    if (allowance.data.allowance === "0") {
+      const approve = await axios.get("")
+    }
+  }
+
+  useEffect(() => {
+    if (txDetails.to && isConnected) {
+      sendTransaction();
+    }
+  }, [txDetails, isConnected, sendTransaction])
 
   return (
     <>
@@ -123,7 +150,7 @@ function Swap() {
           </Popover>
         </div>
         <div className="inputs">
-          <Input placeholder='0' value={tokenOneAmount} onChange={changeAmount} />
+          <Input placeholder='0' value={tokenOneAmount} onChange={changeAmount} disabled={!usdPrices} />
           <Input placeholder='0' value={tokenTwoAmount} disabled={true} />
           <div className="switchButton" onClick={switchTokens}>
             <ArrowDownOutlined className='switchArrow' />
@@ -139,7 +166,7 @@ function Swap() {
             <DownOutlined />
           </div>
         </div>
-        <div className="swapButton" disabled={!tokenOneAmount}>Swap</div>
+        <div className="swapButton" disabled={!tokenOneAmount || !isConnected}>Swap</div>
       </div>
     </>
   )
